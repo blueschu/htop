@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sensors/sensors.h>
 
 #include "Macros.h"
@@ -189,13 +190,26 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
          if (!String_startsWith(label, "Core "))
             continue;
 
+          const sensors_subfeature *subFeature = sym_sensors_get_subfeature(chip, feature,
+                                                                            SENSORS_SUBFEATURE_TEMP_INPUT);
+          if (!subFeature)
+              continue;
+
+          double temp;
+          int r = sym_sensors_get_value(chip, subFeature->number, &temp);
+          if (r != 0)
+              continue;
+
          char* finger = label + strlen("Core ");
          char* end;
-         for (;;) {
+         while (true) {
              if (*finger == ',') finger++;
              unsigned long int tempID = strtoul(finger, &end, 10);
              if (finger == end) {
                  break;
+             }
+             if (tempID == ULONG_MAX) {
+                 continue;
              }
              finger = end;
              tempID++;
@@ -208,17 +222,7 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
 //         tempID--;
 
              if (tempID > existingCPUs)
-                 break;
-
-             const sensors_subfeature *subFeature = sym_sensors_get_subfeature(chip, feature,
-                                                                               SENSORS_SUBFEATURE_TEMP_INPUT);
-             if (!subFeature)
-                 break;
-
-             double temp;
-             int r = sym_sensors_get_value(chip, subFeature->number, &temp);
-             if (r != 0)
-                 break;
+                 continue;
 
              /* If already set, e.g. Ryzen reporting platform temperature for each die, use the bigger one */
              if (isnan(data[tempID])) {
