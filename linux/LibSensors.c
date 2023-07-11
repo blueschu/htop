@@ -229,6 +229,7 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
                  data[tempID] = MAXIMUM(data[tempID], temp);
              }
          }
+         free(label);
       }
    }
 
