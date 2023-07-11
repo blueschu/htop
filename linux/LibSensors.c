@@ -36,6 +36,7 @@ static const sensors_chip_name* (*sym_sensors_get_detected_chips)(const sensors_
 static const sensors_feature* (*sym_sensors_get_features)(const sensors_chip_name*, int*);
 static const sensors_subfeature* (*sym_sensors_get_subfeature)(const sensors_chip_name*, const sensors_feature*, sensors_subfeature_type);
 static int (*sym_sensors_get_value)(const sensors_chip_name*, int, double*);
+static char* (*sym_sensors_get_label)(const sensors_chip_name*, const sensors_feature*);
 
 static void* dlopenHandle = NULL;
 
@@ -74,6 +75,7 @@ int LibSensors_init(void) {
       resolve(sensors_get_features);
       resolve(sensors_get_subfeature);
       resolve(sensors_get_value);
+      resolve(sensors_get_label);
 
       #undef resolve
    }
@@ -180,12 +182,22 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
          if (!feature->name || !String_startsWith(feature->name, "temp"))
             continue;
 
-         unsigned long int tempID = strtoul(feature->name + strlen("temp"), NULL, 10);
-         if (tempID == 0 || tempID == ULONG_MAX)
+         char* label = sym_sensors_get_label(chip, feature);
+         if (!label)
             continue;
 
+         if (!String_startsWith(label, "Core "))
+            continue;
+
+         unsigned long int tempID = strtoul(label + strlen("Core "), NULL, 10);
+         tempID++;
+
+//         unsigned long int tempID = strtoul(feature->name + strlen("temp"), NULL, 10);
+//         if (tempID == 0 || tempID == ULONG_MAX)
+//            continue;
+
          /* Feature name IDs start at 1, adjust to start at 0 to match data indices */
-         tempID--;
+//         tempID--;
 
          if (tempID > existingCPUs)
             continue;
