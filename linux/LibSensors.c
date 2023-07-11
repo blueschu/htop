@@ -189,35 +189,45 @@ void LibSensors_getCPUTemperatures(CPUData* cpus, unsigned int existingCPUs, uns
          if (!String_startsWith(label, "Core "))
             continue;
 
-         unsigned long int tempID = strtoul(label + strlen("Core "), NULL, 10);
-         tempID++;
+         char* finger = label + strlen("Core ");
+         char* end;
+         for (;;) {
+             if (*finger == ',') finger++;
+             unsigned long int tempID = strtoul(finger, &end, 10);
+             if (finger == end) {
+                 break;
+             }
+             finger = end;
+             tempID++;
 
 //         unsigned long int tempID = strtoul(feature->name + strlen("temp"), NULL, 10);
 //         if (tempID == 0 || tempID == ULONG_MAX)
 //            continue;
 
-         /* Feature name IDs start at 1, adjust to start at 0 to match data indices */
+             /* Feature name IDs start at 1, adjust to start at 0 to match data indices */
 //         tempID--;
 
-         if (tempID > existingCPUs)
-            continue;
+             if (tempID > existingCPUs)
+                 break;
 
-         const sensors_subfeature* subFeature = sym_sensors_get_subfeature(chip, feature, SENSORS_SUBFEATURE_TEMP_INPUT);
-         if (!subFeature)
-            continue;
+             const sensors_subfeature *subFeature = sym_sensors_get_subfeature(chip, feature,
+                                                                               SENSORS_SUBFEATURE_TEMP_INPUT);
+             if (!subFeature)
+                 break;
 
-         double temp;
-         int r = sym_sensors_get_value(chip, subFeature->number, &temp);
-         if (r != 0)
-            continue;
+             double temp;
+             int r = sym_sensors_get_value(chip, subFeature->number, &temp);
+             if (r != 0)
+                 break;
 
-         /* If already set, e.g. Ryzen reporting platform temperature for each die, use the bigger one */
-         if (isnan(data[tempID])) {
-            data[tempID] = temp;
-            if (tempID > 0)
-               coreTempCount++;
-         } else {
-            data[tempID] = MAXIMUM(data[tempID], temp);
+             /* If already set, e.g. Ryzen reporting platform temperature for each die, use the bigger one */
+             if (isnan(data[tempID])) {
+                 data[tempID] = temp;
+                 if (tempID > 0)
+                     coreTempCount++;
+             } else {
+                 data[tempID] = MAXIMUM(data[tempID], temp);
+             }
          }
       }
    }
